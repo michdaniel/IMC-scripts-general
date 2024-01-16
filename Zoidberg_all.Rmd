@@ -1,0 +1,68 @@
+---
+title: "Untitled"
+output: html_document
+date: '2023-08-03'
+---
+
+
+```{r}
+
+library(tidyverse)
+library(data.table)
+
+```
+
+```{r}
+
+#Import the log files
+temp <- list.files(path = "C:/Users/micdan/Documents/UZH_LabManagement/IMCs/DV_tracking/Zoidberg_20231204_all/all_logs/", 
+                   pattern = ".txt", full.names = TRUE)
+myfiles <-lapply(temp, FUN =read.delim, header = FALSE)
+zoidlog <- do.call(rbind, myfiles)
+zoidlog <- as.data.table(zoidlog)
+
+zoid_dvs <- zoidlog[grep("Set Detector Voltage to", zoidlog$V3)]
+zoid_dvs <- mutate(zoid_dvs, DV = gsub("Set Detector Voltage to ", "", V3))
+zoid_dvs <- mutate(zoid_dvs, DV = gsub("V.", "", DV))
+zoid_dvs$DV <- as.numeric(zoid_dvs$DV)
+zoid_dvs$pt <- 1:length(zoid_dvs$DV)
+zoid_dvs$date <- sapply(strsplit(zoid_dvs$V1, " "), "[[", 1)
+zoid_dvs$year <- sapply(strsplit(zoid_dvs$date, "-"), "[[", 1)
+zoid_dvs$month <- sapply(strsplit(zoid_dvs$date, "-"), "[[", 2)
+zoid_dvs$ym <- paste(zoid_dvs$year, zoid_dvs$month, sep = "_")
+zoid_dvs$ym_pt <- paste(zoid_dvs$ym, zoid_dvs$pt, sep = "_")
+
+dates <- unique(zoid_dvs$date)
+# zoid_dvs <- zoid_dvs[date %in% dates[-1]]
+# zoid_dvs$pt <- 1:length(zoid_dvs$DV)
+p1 <- ggplot(zoid_dvs, aes(x = pt, y = DV, color = ym)) +
+  geom_point()+
+  scale_y_continuous(limits = c(-2550, -1100), breaks = seq(-2550, -1100, by = 50)) +
+  scale_x_continuous(breaks = seq(0, 30000, by = 2000))+
+  theme_bw()
+p1
+
+ggsave("Zoidberg_all_detectors_2021-2023.png", p1, width = 600, height = 400, units = "mm", dpi = 300)
+
+# zoid_rois <- zoidlog[grep("Acquiring ROI_", zoidlog$V3)]
+# 
+# zoid_roi_dvs <- zoidlog %>%
+#   filter(str_detect(V3, "Set Detector Voltage to|Acquiring ROI_"))
+
+#Write the data table out as a csv
+
+fwrite(zoid_dvs, "C:/Users/micdan/Documents/UZH_LabManagement/IMCs/DV_tracking/20231204_Zoidberg_logs.csv")
+
+```
+
+
+
+
+
+
+
+
+
+
+
+

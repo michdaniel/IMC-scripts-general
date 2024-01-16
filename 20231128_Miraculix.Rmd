@@ -1,0 +1,114 @@
+---
+title: "Untitled"
+output: html_document
+date: '2023-08-03'
+---
+
+
+```{r}
+
+library(tidyverse)
+library(data.table)
+
+```
+
+```{r}
+#import log files for Miraculix
+temp <- list.files(path = "C:/Users/micdan/Documents/UZH_LabManagement/IMCs/DV_tracking/Miraculix_20231128/", 
+                   pattern = ".txt", full.names = TRUE)
+myfiles <-lapply(temp, FUN =read.delim, header = FALSE)
+log <- do.call(rbind, myfiles)
+log <- as.data.table(log)
+
+dvs <- log[grep("Set Detector Voltage to", log$V3)]
+dvs <- mutate(dvs, DV = gsub("Set Detector Voltage to ", "", V3))
+dvs <- mutate(dvs, DV = gsub("V.", "", DV))
+dvs$DV <- as.numeric(dvs$DV)
+dvs$pt <- 1:length(dvs$DV)
+dvs$date <- sapply(strsplit(dvs$V1, " "), "[[", 1)
+
+
+p1 <- ggplot(dvs, aes(x = pt, y = DV, color = date)) +
+  geom_point()+
+  theme(legend.position = "none")
+p1
+
+ggsave("20231128_miraculix.png", p1, width = 400, height = 400, units = "mm", dpi = 300)
+
+
+# zoid_rois <- log[grep("Acquiring ROI_", log$V3)]
+# 
+# zoid_roi_dvs <- log %>%
+#   filter(str_detect(V3, "Set Detector Voltage to|Acquiring ROI_"))
+
+
+```
+```{r}
+#import the log files for zoidberg
+temp <- list.files(path = "C:/Users/micdan/Documents/UZH_LabManagement/IMCs/DV_tracking/Zoidberg_20231127/", 
+                   pattern = ".txt", full.names = TRUE)
+myfiles <-lapply(temp, FUN =read.delim, header = FALSE)
+zoidlog <- do.call(rbind, myfiles)
+zoidlog <- as.data.table(zoidlog)
+
+zoid_dvs <- zoidlog[grep("Set Detector Voltage to", zoidlog$V3)]
+zoid_dvs <- mutate(zoid_dvs, DV = gsub("Set Detector Voltage to ", "", V3))
+zoid_dvs <- mutate(zoid_dvs, DV = gsub("V.", "", DV))
+zoid_dvs$DV <- as.numeric(zoid_dvs$DV)
+zoid_dvs$pt <- 1:length(zoid_dvs$DV)
+zoid_dvs$date <- sapply(strsplit(zoid_dvs$V1, " "), "[[", 1)
+
+
+p2 <- ggplot(zoid_dvs, aes(x = pt, y = DV, color = date)) +
+  geom_point()
+p2
+
+```
+
+
+
+```{r}
+
+p1 <- ggplot(dvs, aes(x = pt, y = DV, color = date)) +
+  geom_point() + 
+  scale_y_continuous(limits = c(-2550, -1100), breaks = seq(-2550, -1100, by = 50)) +
+  scale_x_continuous(limits = c(1, 6000))+
+  ggtitle("Miraculix DVs over time")+
+  xlab("time")+
+  theme_bw() +
+  theme(legend.position = "none") 
+p1
+
+
+p2 <- ggplot(zoid_dvs, aes(x = pt, y = DV, colour = date)) +
+  geom_point() + 
+  scale_y_continuous(limits = c(-2550, -1100), breaks = seq(-2550, -1100, by = 50))+
+  scale_x_continuous(limits = c(1, 6000))+
+  ggtitle("Zoidberg DVs over time")+
+  xlab("time")+
+  theme_bw()+
+  theme(legend.position = "none")
+p2
+
+p3 <- cowplot::plot_grid(p1, p2)
+p3
+
+
+ggsave("20231128_MiraculixvsZoidL_samex.png", p3, width = 400, height = 400, units = "mm", dpi = 300)
+
+```
+
+```{r}
+
+#fit linear regression to find slopes of each
+
+lmzoid <- lm(DV ~ pt, data = dvs)
+lmzoid
+summary(lmzoid)
+
+
+lmtig <- lm(DV ~ pt, data = tig_dvs[date %in% dates[-c(1,2)], ])
+lmtig
+
+
+```
